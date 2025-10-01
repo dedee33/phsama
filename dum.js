@@ -44,8 +44,7 @@ const z = "https://www.flipkart.com/grocery/personal-baby-care/soaps-body-wash/b
 const aa = "https://www.flipkart.com/grocery/~cs-smq1djplei/pr?sid=73z&marketplace=GROCERY&collection-tab-name=Grocery&ctx=eyJjYXJkQ29udGV4dCI6eyJhdHRyaWJ1dGVzIjp7InRpdGxlIjp7Im11bHRpVmFsdWVkQXR0cmlidXRlIjp7ImtleSI6InRpdGxlIiwiaW5mZXJlbmNlVHlwZSI6IlRJVExFIiwidmFsdWVzIjpbIk5ldyBMYXVuY2hlcyJdLCJ2YWx1ZVR5cGUiOiJNVUxUSV9WQUxVRUQifX19fX0%3D&bu=MIXED&pageUID=1747032471345&ctx=eyJjYXJkQ29udGV4dCI6eyJhdHRyaWJ1dGVzIjp7InRpdGxlIjp7Im11bHRpVmFsdWVkQXR0cmlidXRlIjp7ImtleSI6InRpdGxlIiwiaW5mZXJlbmNlVHlwZSI6IlRJVExFIiwidmFsdWVzIjpbIk5ldyBMYXVuY2hlcyJdLCJ2YWx1ZVR5cGUiOiJNVUxUSV9WQUxVRUQifX19fX0%3D&BU=Grocery"
 const bb = "https://www.flipkart.com/grocery/~cs-74791gxrz6/pr?sid=73z&marketplace=GROCERY&collection-tab-name=Grocery&ctx=eyJjYXJkQ29udGV4dCI6eyJhdHRyaWJ1dGVzIjp7InRpdGxlIjp7Im11bHRpVmFsdWVkQXR0cmlidXRlIjp7ImtleSI6InRpdGxlIiwiaW5mZXJlbmNlVHlwZSI6IlRJVExFIiwidmFsdWVzIjpbIkZlYXR1cmVkIFRoaXMgV2VlayJdLCJ2YWx1ZVR5cGUiOiJNVUxUSV9WQUxVRUQifX19fX0%3D&bu=MIXED&pageUID=1747032481993&ctx=eyJjYXJkQ29udGV4dCI6eyJhdHRyaWJ1dGVzIjp7InRpdGxlIjp7Im11bHRpVmFsdWVkQXR0cmlidXRlIjp7ImtleSI6InRpdGxlIiwiaW5mZXJlbmNlVHlwZSI6IlRJVExFIiwidmFsdWVzIjpbIkZlYXR1cmVkIFRoaXMgV2VlayJdLCJ2YWx1ZVR5cGUiOiJNVUxUSV9WQUxVRUQifX19fX0%3D&BU=Grocery"
 const cc = "https://www.flipkart.com/grocery/~cs-1riuvm1uvr/pr?sid=73z,cwl,bdc,07q&marketplace=GROCERY&collection-tab-name=Grocery&BU=Grocery"
-const dd = "flipkart.com/grocery/~cs-nedxhzr9nn/pr?sid=73z%2Cujs%2Cafd&marketplace=GROCERY&param45678543567&BU=Grocery"
-const categories = [one,two,three,four,five,six,seven,eight,nine,ten,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb,cc,dd]
+const categories = [one,two,three,four,five,six,seven,eight,nine,ten,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb,cc]
 const fs = fsp.promises
 let browser,page
 const surav = '1087475022'
@@ -75,12 +74,7 @@ const Sleep = ms => new Promise(res => setTimeout(res,ms))
 
 const login = async ()=>{
     try{
-        browser = await pup.launch({headless:true,slowMo:500,
-        args: [
-      '--no-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-blink-features=AutomationControlled' // use with caution
-    ],})
+        browser = await pup.launch({headless:true})
         page = await browser.newPage()
         await page.setViewport({width:1366, height:768})
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ...')
@@ -122,9 +116,11 @@ const patience = async()=>{
 
         await Sleep(10000)
         await scrap()
+        await launch()
         await fs.writeFile("list.json", JSON.stringify(prods, null, 2));
-             console.log(`📁 list.json updated. Total products: ${prods.length}`);
-
+        console.log(`📁 list.json updated. Total products: ${prods.length}`);
+        await Sleep(30000)
+        await login()
             }catch(err){
                 
                 console.log(`Error Logging in : ${err.message}`)
@@ -157,7 +153,7 @@ let scrap = async ()=>{
                         } else {
                     discounts = "0% OFF";
                         }
-
+       
            console.log(`\n\nProduct : ${products} `)
            console.log(`New Price : ${newPrice}`)
            console.log(`Old Price : ${oldPrice}`)
@@ -171,20 +167,22 @@ let scrap = async ()=>{
                 Discount: discounts,
                 Link : links
            }
-           let item = prods.find(p => p.Product == products)
+           const item = prods.find(p => p.Product == products)
             
 if (item) {
     // Compare properties
-    if (item.Price !== newPrice) {
-
+    if (item.Price !== newPrice && item.link == links) {
+             const priceNumber = Number(newPrice.replace(/[^0-9.]/g,""))
+             const discountNumber = Number(discounts.replace(/[^0-9.]/g,""))
+             const mrp = priceNumber - (1-discountNumber/100)
 
       console.log(`\n\n ✅✅ Price Change detected :`)
       console.log(`Product : ${products}`)
       console.log(`New Price : ${newPrice}`)
-      console.log(`Old Price : ${oldPrice}`)
+      console.log(`Old Price : ${mrp}`)
       console.log(`Discount : ${discounts}`)
       console.log(`Link : ${links}`)
-      const craft = `<b>\t⚠️  <u> New Price change detected </u>  ⚠️ </b>\n\n\n<b> 🛒 Product : </b> <code>${products}</code> \n\n<b>🆕 New Price : </b> <code>${newPrice}</code> \n\n<b>🕷️ Old Price : </b> <code>${oldPrice}</code> \n\n<b>🎗️ Discount : </b> <code>${discounts}</code> \n\n <b>Links : </b>  <a href="${links}">View Product 🛒</a>`
+      const craft = `<b>\t⚠️  <u> New Price change detected </u>  ⚠️ </b>\n\n\n<b> 🛒 Product : </b> <code>${products}</code> \n\n<b>🆕 New Price : </b> <code>${newPrice}</code> \n\n<b>🕷️ Old Price : </b> <code>${mrp}</code> \n\n<b>🎗️ Discount : </b> <code>${discounts}</code> \n\n <b>Links : </b>  ${links}`
       for(const chat of chats){
         const chatId = Number(chat)
         try{
@@ -198,7 +196,7 @@ if (item) {
                 console.log(`Could not delete Message 🎗️🎗️  : ${err.message}`)
             }
          }
-           setTimeout(del,20000)
+           setTimeout(del,9000000)
            item.Price = newPrice; // update it
            item.Discount = discounts;
            item.Old = oldPrice
@@ -222,13 +220,11 @@ if (item) {
         console.log(`\n\n Total Products :  ${total}`)
         await fs.writeFile("list.json",JSON.stringify(prods,null,2))
         await Sleep(2000)
-        for(const victim of categories){
-            await scrap2(victim)
-        }
         await Sleep(5000)
         await fs.writeFile("list.json",JSON.stringify(prods,null,2))
         console.log(`Items Added to list : [${updates}]`)
     }
+    
     }catch(err){
         console.log(`Error Scrapping Pagee : : ${err.message}`)
     }
@@ -260,7 +256,15 @@ const scrap2 = async(dir)=>{
 
 
 
-
+const launch = async (victim)=>{
+  for(victim of categories){
+   try{
+    await scrap2(victim)
+   }catch(err){
+    console.log('💀💀💀 Theee Launching error')
+   }
+  }
+}
 
 
 const climb = async ()=>{
@@ -296,15 +300,19 @@ const climb = async ()=>{
 
         let item = prods.find(p => p.Product == name)
         if(item){
-            if(item.Price !== latest){
+            if(item.Price !== latest && item.link == link){
+
+                const priceNumber = Number(latest.replace(/[^0-9.]/g,""))
+                const discountNumber = Number(discount.replace(/[^0-9.]/g,""))
+                const mrp = priceNumber - (1-discountNumber/100)
         
                   console.log(`\n\n ✅✅ Price Change detected :`)
                   console.log(`Product : ${name}`)
                   console.log(`New Price : ${latest}`)
-                  console.log(`Old Price : ${ancient}`)
+                  console.log(`Old Price : ${mrp}`)
                   console.log(`Discount : ${discount}`)
                   console.log(`Link : ${link}`)
-                  const craft2 = `<b>\t ⚠️ <u>  New Price change detected</u>   ⚠️</b>\n\n \n<b>Product : </b> <code> ${name}</code>\n<b>\n\nNew Price : </b> <code>${latest}</code>\n<b>\n\nOld Price : </b><code> ${ancient}</code>\n<b>\n\nDiscount : </b> <code>${discount}</code>\n<b>\n\nLinks : </b> <a href="${link}">View Product</a>`
+                  const craft2 = `<b>\t ⚠️ <u>  New Price change detected</u>   ⚠️</b>\n\n \n<b>Product : </b> <code> ${name}</code>\n<b>\n\nNew Price : </b> <code>${latest}</code>\n<b>\n\nOld Price : </b><code> ${mrp}</code>\n<b>\n\nDiscount : </b> <code>${discount}</code>\n<b>\n\nLinks : </b> ${link}`
 
                  for(const chat of chats){
                     const chatId = Number(chat)
@@ -321,7 +329,7 @@ const climb = async ()=>{
                                    }
                                   }
 
-                     setTimeout(del,20000)
+                     setTimeout(del,90000000)
                      item.Old = ancient;
                      item.Price = latest;
                      item.Discount = discount;
@@ -338,7 +346,7 @@ const climb = async ()=>{
             updates ++
             console.log(`\n\n Added new item : ${name}`)
             await fs.writeFile("list.json", JSON.stringify(prods, null, 2));
-             console.log(`📁 list.json updated. Total products: ${prods.length}`);
+            console.log(`📁 list.json updated. Total products: ${prods.length}`);
         }
     }
     
@@ -350,7 +358,7 @@ const climb = async ()=>{
 
 const retry = async()=>{
     try{
-        await scrap()
+        await patience()
         console.log(`Retried successfully`)
         time = 5000
     }catch(err){
