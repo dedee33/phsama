@@ -53,9 +53,10 @@ let updates = 0
 let run = []
 let prods=[]
 const bot = new Telegraf(`8255851397:AAFEn9UPa8Ry1N8fAGtyYYPH8GMQtyeFnDg`)
+// help
 
 bot.start((ctx)=>{
-    ctx.reply("welcome Hommie")
+    ctx.reply("This bot will send you updates on latest price changes")
 })
 
 bot.launch(()=>{
@@ -81,19 +82,10 @@ const login = async ()=>{
         await page.goto("https://www.flipkart.com/grocery-supermart-store?marketplace=GROCERY",{timeout:800000})
         await Sleep(15000)
         console.log("Login page Launced")
-        await patience()
-        
-
     }catch(err){
         console.log(`Error Launching Page : ${err.message}`)
     }
 }
-
-
-
-login()
-
-
 
 
 
@@ -115,17 +107,11 @@ const patience = async()=>{
         console.log(`Button : ${buttons}`)
 
         await Sleep(10000)
-        await scrap()
-        await launch()
-        await fs.writeFile("list.json", JSON.stringify(prods, null, 2));
-        console.log(`📁 list.json updated. Total products: ${prods.length}`);
-        await Sleep(30000)
-        await login()
+       
             }catch(err){
                 
                 console.log(`Error Logging in : ${err.message}`)
-                await Sleep(50000)
-                setTimeout(retry,time)
+            
                 
             }
         }
@@ -140,7 +126,20 @@ let scrap = async ()=>{
     try{
         const containers = await page.$$("._25HC_u")
         const size =  containers.length
-        console.log(`All containers : ${size}`)
+        console.log(`\n\n🚚 All containers : ${size}`)
+
+        for(const chat of chats){
+          try{
+              const chatId = Number(chat)
+              const chut = await bot.telegram.getChat(chatId)
+              const firstName = chut.first_name
+              await bot.telegram.sendMessage(chatId,`.......   ⚠️...  <b>Hello ${firstName} ...⚠️ </b>..... \n\n\n\n🕷️ Please Note that the scrapper bot is actively running on Your Server . Any change in price will be Sent to you immediately 🕷️🕷️ \n\n\n\n\n\n ⚠️ <b>Note :</b> <code>Every time the scrapper bot restarts you will get this message \n\n</code>`,{parse_mode:"HTML"})
+              console.log(`\n\n 🎭🎭 ${firstName} : Notified by the bot `)
+          }catch(err){
+            console.log(`⚠️ could not notify ${firstName} : ${err.message}`)
+          }
+        }
+
 
         for(const container of containers){
            const links = await container.$eval("a",links =>links.href)
@@ -158,8 +157,7 @@ let scrap = async ()=>{
            console.log(`New Price : ${newPrice}`)
            console.log(`Old Price : ${oldPrice}`)
            console.log(`Discount : ${discounts}`)
-           console.log(`Links : ${links}`)
-
+           console.log(`Link : ${links}`)
            const schema = {
                 Product : products,
                 Price : newPrice,
@@ -167,64 +165,60 @@ let scrap = async ()=>{
                 Discount: discounts,
                 Link : links
            }
-           const item = prods.find(p => p.Product == products)
+           const item = prods.find(p => p.Product.toLowerCase() == products.toLowerCase())
             
 if (item) {
     // Compare properties
-    if (item.Price !== newPrice && item.link == links) {
+           const comp = String(item.Price)
+           const oldPriceNum = Number(comp.replace(/[^0-9.]/g,""));
+           const newPriceNum = Number(newPrice.replace(/[^0-9.]/g,""))   //ensuring our values are numbers
+           const oldlink = normalizeLink(item.Link)
+           const newlink = normalizeLink(links)
+    if (oldPriceNum !== newPriceNum && oldlink == newlink) {
              const priceNumber = Number(newPrice.replace(/[^0-9.]/g,""))
              const discountNumber = Number(discounts.replace(/[^0-9.]/g,""))
-             const mrp = priceNumber - (1-discountNumber/100)
+             const mrpc = priceNumber / (1 - discountNumber / 100)
+             const mrp = Math.round(mrpc)
 
       console.log(`\n\n ✅✅ Price Change detected :`)
       console.log(`Product : ${products}`)
       console.log(`New Price : ${newPrice}`)
-      console.log(`Old Price : ${mrp}`)
+      console.log(`MRP : ₹${mrp}`)
       console.log(`Discount : ${discounts}`)
       console.log(`Link : ${links}`)
-      const craft = `<b>\t⚠️  <u> New Price change detected </u>  ⚠️ </b>\n\n\n<b> 🛒 Product : </b> <code>${products}</code> \n\n<b>🆕 New Price : </b> <code>${newPrice}</code> \n\n<b>🕷️ Old Price : </b> <code>${mrp}</code> \n\n<b>🎗️ Discount : </b> <code>${discounts}</code> \n\n <b>Links : </b>  ${links}`
+      const craft = `<b>\t⚠️....  <u> New Price change detected </u>  .....⚠️ </b>\n\n\n<b> 🛒 Product : </b> <code>${products}</code> \n\n<b>🆕 New Price : </b> <code>${newPrice}</code> \n\n<b>🕷️ M.R.P : </b> <code>₹${mrp}</code> \n\n<b>🎗️ Discount : </b> <code>${discounts}</code> \n\n <b>Link : </b>  ${links}`
+      
+         item.Price = newPrice;
+         item.Old = oldPrice;        //Updating values after alerting price change
+         item.Discount = discounts;
+
       for(const chat of chats){
         const chatId = Number(chat)
         try{
-        const send = await bot.telegram.sendMessage(chatId,craft,{parse_mode:"HTML"})
+        const send = await bot.telegram.sendMessage(chatId,craft,{parse_mode:"HTML"})   //send price change Alert
         console.log('Message sent to bot ')
          const del = async ()=>{
             try{
                 await bot.telegram.deleteMessage(chatId,send.message_id)
                 console.log('Message deleted : ',send.message_id)
             }catch(err){
-                console.log(`Could not delete Message 🎗️🎗️  : ${err.message}`)
+                console.log(`Could not delete Message 🎗️🎗️  : ${err.message}` ) //A delete function to delete msg after some secs
             }
          }
-           setTimeout(del,9000000)
-           item.Price = newPrice; // update it
-           item.Discount = discounts;
-           item.Old = oldPrice
+           setTimeout(del,9000000)           
       }catch(err){
         console.log('Could not Send message to telegram : ',err.message)
-      }
+      }  }}
 
-    }
-
-    
-      await fs.writeFile("list.json", JSON.stringify(prods, null, 2));
-    
-  } else {
-    prods.push(schema);
-    console.log("New product added:", products); 
-    updates ++
-    await fs.writeFile("list.json", JSON.stringify(prods, null, 2));
-  }
-}
+        }else{
+      prods.unshift(schema);
+      console.log("New product added:", products); 
+      updates ++
+             }
         const total = prods.length
         console.log(`\n\n Total Products :  ${total}`)
-        await fs.writeFile("list.json",JSON.stringify(prods,null,2))
-        await Sleep(2000)
-        await Sleep(5000)
-        await fs.writeFile("list.json",JSON.stringify(prods,null,2))
         console.log(`Items Added to list : [${updates}]`)
     }
-    
     }catch(err){
         console.log(`Error Scrapping Pagee : : ${err.message}`)
     }
@@ -242,15 +236,9 @@ const scrap2 = async(dir)=>{
     const title = await page.title()
     await Sleep(10000)
     await climb()
-    const total = prods.length
-    console.log(`\n\nTotal items :: [${total}]`)
-    console.log(`New Updates :: [${updates}]`)
-
-
    }catch(err){
     console.log(`Could not launch target ❌ :: ${err.message}`)
      console.log(`Items Added to list : [${updates}]`)
-     setTimeout(retry,time)
    }
 }
 
@@ -285,7 +273,7 @@ const climb = async ()=>{
         }else{
             discount = "0% OFF";
         }
-        console.log(`\n\n New Product : ${name}`)
+        console.log(`\n\nProduct : ${name}`)
         console.log(`Price :  ${latest}`)
         console.log(`Old Price : ${ancient}`)
         console.log(`Discount :: ${discount}`)
@@ -297,62 +285,65 @@ const climb = async ()=>{
                 Discount: discount,
                 Link : link
            }
-
-        let item = prods.find(p => p.Product == name)
+  
+        let item = prods.find(p => p.Product.toLowerCase() == name.toLowerCase())
+           const oldlink = normalizeLink(item.Link)
+          const newlink = normalizeLink(link)
         if(item){
-            if(item.Price !== latest && item.link == link){
+           const comp = String(item.Price)
+           const oldPriceNum = Number(comp.replace(/[^0-9.]/g,""));
+           const newPriceNum = Number(latest.replace(/[^0-9.]/g,""))
+
+            if(oldPriceNum !== newPriceNum && oldlink == newlink){
 
                 const priceNumber = Number(latest.replace(/[^0-9.]/g,""))
-                const discountNumber = Number(discount.replace(/[^0-9.]/g,""))
-                const mrp = priceNumber - (1-discountNumber/100)
+                const discountNumber = Number(discount.replace(/[^0-9.]/g,""))   //Max Retailer Price Math
+                const mrpc = priceNumber / (1 - discountNumber / 100)
+                const mrp = Math.round(mrpc)
         
                   console.log(`\n\n ✅✅ Price Change detected :`)
                   console.log(`Product : ${name}`)
                   console.log(`New Price : ${latest}`)
-                  console.log(`Old Price : ${mrp}`)
+                  console.log(`MRP : ₹${mrp}`)                                //logging price change  details to console
                   console.log(`Discount : ${discount}`)
                   console.log(`Link : ${link}`)
-                  const craft2 = `<b>\t ⚠️ <u>  New Price change detected</u>   ⚠️</b>\n\n \n<b>Product : </b> <code> ${name}</code>\n<b>\n\nNew Price : </b> <code>${latest}</code>\n<b>\n\nOld Price : </b><code> ${mrp}</code>\n<b>\n\nDiscount : </b> <code>${discount}</code>\n<b>\n\nLinks : </b> ${link}`
+                  const craft2 = `<b>\t ⚠️... <u>  New Price change detected</u>   ...⚠️</b>\n\n \n<b>Product : </b> <code> ${name}</code>\n<b>\n\nNew Price : </b> <code>${latest}</code>\n<b>\n\nM.R.P : </b><code> ₹${mrp}</code>\n<b>\n\nDiscount : </b> <code>${discount}</code>\n<b>\n\nLinks : </b> ${link}`
+                        item.Price = latest;
+                        item.Old = ancient;        //Updating values after alerting price change
+                        item.Discount = discount;
 
                  for(const chat of chats){
                     const chatId = Number(chat)
                      try{
-                    await Sleep(2000)
+                    await Sleep(20000)
                     const send = await bot.telegram.sendMessage(chat,craft2,{parse_mode:"HTML"})
                     console.log(`Message sent to telegram bot`)
+                    await Sleep(10000)                           //Telegram bot to update user on price change
                     const del = async ()=>{
                                 try{
-                                     await bot.telegram.deleteMessage(chatId,send.message_id)
-                                     console.log('Message deleted : ',send.message_id)
+                                     await bot.telegram.deleteMessage(chatId,send.message_id)             
+                                     console.log('Message deleted : ',send.message_id)           
                                    }catch(err){
-                                     console.log(`Could not delete Message 🎗️🎗️  : ${err.message}`)
+                                     console.log(`Could not delete Message 🎗️🎗️  : ${err.message}`)  //Deleting Telegram text after some secs
                                    }
                                   }
 
                      setTimeout(del,90000000)
-                     item.Old = ancient;
-                     item.Price = latest;
-                     item.Discount = discount;
-                     await fs.writeFile("list.json", JSON.stringify(prods, null, 2));
+                   
+                     
                   }catch(err){
                     console.log(`Could not send message to telegram User : ${err.message}`)
                   }
-                 }
-
-                       
+                 }          
             }
         }else{
-            prods.push(schema)
+            prods.unshift(schema)
             updates ++
-            console.log(`\n\n Added new item : ${name}`)
-            await fs.writeFile("list.json", JSON.stringify(prods, null, 2));
-            console.log(`📁 list.json updated. Total products: ${prods.length}`);
+            console.log(`\n\n🆕 Added new item : ${name}`);
         }
-    }
-    
+    }  
   }catch(err){
-    console.log(`\n\n❌❌❌ :: ${err.message}`)
-        
+    console.log(`\n\n❌❌❌ :: ${err.message}`)     
   }
 }
 
@@ -366,4 +357,76 @@ const retry = async()=>{
           time *= 1.54
           setTimeout(retry,time)
     }
+}
+
+
+
+
+
+const main = async ()=>{
+  try {
+    const exist = await fs.readFile("list.json", "utf-8")
+    prods = JSON.parse(exist)
+} catch(err){
+    console.log("Could not reload list.json, using in-memory data.")
+    prods =[]
+}
+
+ try{
+      await login()
+      for(let i=0;i<=1000;i++){
+  try{
+       await patience()
+       await Sleep(2000)
+       await scrap()
+       await launch()
+
+     for(const chit of chats){
+      try{
+          const chatId = Number(chit)
+          const user = await bot.telegram.getChat(chatId)
+         const notify = await bot.telegram.sendMessage(chatId,` ⚠️...  Hello <i>${user.first_name} </i>...⚠️ ..\n\n 🎭 Bot has finished scrappping All items on the specified Urls ...\n\n<b>📝Note: </b> This was Round <b>: [${i+1}]</b> \n\n🆕🆕 New Products added to database : <b>[${updates}]</b> \n\n\n ⚠️...  The bot Will scrap the urls again in 1 minute  ...⚠️`,{parse_mode:"HTML"}) 
+         const del = async ()=>{
+            try{
+                const m = chats.length
+                await bot.telegram.deleteMessage(Number(chit),notify.message_id)
+                console.log('\n\n 💥 Message deleted : ',notify.message_id)
+            }catch(err){
+                console.log(`Could not delete Message 🎗️🎗️  : ${err.message}`)
+            }
+         }
+             setTimeout(del,450000)  
+        }catch(err){
+        console.log(`\n\n 💥💥Failed to send messages to telegram users : 💥 : ${err.message}`)
+      }
+     }
+      updates = 0
+    await fs.writeFile("list.json", JSON.stringify(prods, null, 2));
+        
+    console.log(`\n\n📁 list.json updated. Total products: ${prods.length}    : ⚠️`);
+     await Sleep(6000)
+
+    }catch(err){
+        console.log('⚠️ Error iterating through the main function : ' ,err.message)
+        await Sleep(5000)
+       } }
+ 
+  }catch(err){
+    console.log(`The main function came to an error ⚠️ : ${err.message}`)
+  }
+}
+
+main()
+
+
+
+function normalizeLink(rawLink) {
+  try {
+    // Try to parse the URL to make sure it's valid
+    new URL(rawLink);
+    return rawLink; // return the full original URL
+  } catch (err) {
+    console.log("Invalid URL:", rawLink);
+    return rawLink; // return as-is even if invalid
+  }
 }

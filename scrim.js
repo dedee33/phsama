@@ -124,3 +124,18 @@ const main = async ()=>{
 }
 
 main()
+
+
+
+
+
+ try {
+    // Always reload list before scraping
+    if (fsp.existsSync("list.json")) {
+      const exist = fsp.readFileSync("list.json", "utf-8");
+      prods = JSON.parse(exist);
+      console.log(`\n Using Existing List`);
+    } else {
+      prods = [];
+      console.log(`List is Empty`);
+    }
